@@ -11,7 +11,7 @@ app = dash.Dash(__name__)
 server = app.server
 
 
-app.layouyt = html.Div([
+app.layout = html.Div([
     'Test'
 ])
 
