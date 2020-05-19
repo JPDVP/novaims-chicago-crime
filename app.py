@@ -65,17 +65,41 @@ dropdown_crime = dcc.Dropdown(
 # dropdown Community Area
 dropdown_ca = dcc.Dropdown(
     id='dropdown-ca',
-    options=[{'label':v, 'value':k} for (k,v) in ca_names.items()],
-    multi=True
+    options=[{'label':v, 'value':k} for (k,v) in ca_names.items()]
+)
+
+slider_top_crimes = dcc.Slider(
+    id='slider-top-crimes',
+    min=0,
+    max=10,
+    marks={i:str(i) if i!=0 else 'All' for i in range(11)},
+    value=0
+)
+
+# dropdown_top_crimes = dcc.Dropdown(
+#     id='dropdown-top-crimes',
+#     options=[{'label':str(i) if i != 0 else 'All', 'value':i} for i in range(11)],
+#     value=0
+# )
+
+# radio arrest
+radio_arrest = dcc.RadioItems(
+    options=[
+        {'label': 'All', 'value': 'All'},
+        {'label': 'True', 'value': 'True'},
+        {'label': 'False', 'value': 'False'}
+    ],
+    value='All',
+    labelStyle={'display':'block', 'margin':'5px'}
 )
 
 # slider for years
-slider_years = dcc.Slider(
+slider_years = dcc.RangeSlider(
     min=min(unq_year),
     max=max(unq_year),
     step=1,
-    marks={year:str(year) for year in unq_year},
-    value=2019
+    marks={int(year):str(year) if n % 2 == 0 else '' for (n, year) in enumerate(unq_year)},
+    value=[min(unq_year),max(unq_year)]
 )
 
 
@@ -93,23 +117,47 @@ app.layout = html.Div([
             style={'padding':5, 'margin-bottom':2}
         ),
 
-        # filters-div
+        # first-row-div
         html.Div(
-            [
-                html.H3('Dashboard Filters:'),
-                html.H5('Crime Type'),
-                dropdown_crime,
-                html.Br(),
-                html.H5('Community Area'),
-                dropdown_ca,
-                html.Br(),
-                html.H5('Year'),
-                slider_years
-            ],
-            id='filters-div'
+            # filters-div
+            html.Div(
+                [
+                    html.Div([html.H3('Dashboard Filters:')], className='mt-3 mb-3'),
+                    html.Div([html.H5('Crime Type'), dropdown_crime], className='mt-3 mb-1'),
+                    html.Div([
+                        html.Div([
+                            html.Div([
+                                    html.H6('Top:'),
+                                    html.Div(slider_top_crimes, className='ml-2 mt-1')
+                                ], 
+                                className='mt-1 mb-5'
+                            ),
+                            html.Div([html.H5('Community Area'), dropdown_ca], className='mt-5')
+                        ], className='col-7 mr-3'),
+                        html.Div([html.H5('Arrest'),radio_arrest], className='col-4 mt-3 ml-3'),
+                    ], className='row mt-1 mb-3'),
+                    html.Div([
+                            html.H5('Year'),
+                            html.Div(slider_years, className='ml-2 mt-1')
+                        ],
+                        className='mt-3 mb-3'
+                    )
+                ],
+                id='filters-div',
+                className='col-3 mr-2 ml-2 mt-2 mb-2 p-1',
+            ),
+            id='first-row-div',
+            className='row mr-2 ml-2 mt-2 mb-2 p-1'
         )
     ], id='outer-div', className='mb-2 mr-2 ml-2 p-1')
 ], className='bg-light')
+
+
+@app.callback(
+    Output('dropdown-crime', 'value'),
+    [Input('slider-top-crimes', 'value')])
+def return_top_crimes(top):
+    return df.groupby('Primary Type')['Count'].sum().nlargest(top).index
 
 
 if __name__ == '__main__':
