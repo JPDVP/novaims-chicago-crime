@@ -7,7 +7,6 @@ import numpy as np
 import plotly.graph_objs as go
 import json
 from urllib.request import urlopen
-from math import ceil, log10
 
 
 # paths for the dataset and related files
@@ -101,6 +100,18 @@ slider_years = dcc.RangeSlider(
     value=min_max_year
 )
 
+# slider for map
+slider_map = dcc.Slider(
+    id='slider-map',
+    min=0,
+    max=2,
+    step=1,
+    marks={0:'Average',1:'Test',2:'Test2'},
+    value=0,
+    included=False,
+    updatemode='drag'
+)
+
 
 app = dash.Dash(__name__, external_stylesheets=external_css)
 server = app.server
@@ -118,33 +129,44 @@ app.layout = html.Div([
 
         # first-row-div
         html.Div(
-            # filters-div
-            html.Div(
-                [
-                    html.Div([html.H3('Dashboard Filters:')], className='mb-2'),
-                    html.Div([html.H5('Crime Type'), dropdown_crimes], className='mb-1'),
-                    html.Div([
+            [
+                # filters-div
+                html.Div(
+                    [
+                        html.Div([html.H3('Dashboard Filters:')], className='mb-2'),
+                        html.Div([html.H5('Crime Type'), dropdown_crimes], className='mb-1'),
                         html.Div([
                             html.Div([
-                                    html.H6('Top:'),
-                                    html.Div(slider_top_crimes, className='ml-2 mt-1')
-                                ], 
-                                className='mt-1 mb-5'
-                            ),
-                            html.Div([html.H5('Community Area'), dropdown_ca], className='mt-5')
-                        ], className='col-7 mr-3'),
-                        html.Div([html.H5('Arrest'),check_arrest], className='col-4 mt-3 ml-3'),
-                    ], className='row mt-1 mb-3'),
+                                html.Div([
+                                        html.H6('Top:'),
+                                        html.Div(slider_top_crimes, className='ml-2 mt-1')
+                                    ], 
+                                    className='mt-1 mb-5'
+                                ),
+                                html.Div([html.H5('Community Area'), dropdown_ca], className='mt-5')
+                            ], className='col-7 mr-3'),
+                            html.Div([html.H5('Arrest'),check_arrest], className='col-4 mt-3 ml-3'),
+                        ], className='row mt-1 mb-3'),
+                        html.Div([
+                                html.H5('Year'),
+                                html.Div(slider_years, className='ml-2 mt-1')
+                            ],
+                            className='mt-3 mb-3'
+                        )
+                    ],
+                    id='filters-div',
+                    className='col-3 mr-2 p-4 shadow bg-light rounded'
+                ),
+                # snapshots
+                html.Div([], className='col-2 ml-2 mr-2 p-4 shadow bg-light rounded'),
+                # map chart
+                html.Div(
                     html.Div([
-                            html.H5('Year'),
-                            html.Div(slider_years, className='ml-2 mt-1')
-                        ],
-                        className='mt-3 mb-3'
-                    )
-                ],
-                id='filters-div',
-                className='col-3 p-4 shadow bg-light rounded',
-            ),
+                        html.Div([dcc.Graph(id='graph-map')], className='row ml-2 mt-1')
+                    ], className='row'),
+                    className='col-5 ml-2 mr-2 p-4 shadow bg-light rounded'
+                )
+            ],
             id='row-div-1',
             className='row mr-2 ml-2 mt-3 mb-3'
         ),
@@ -155,7 +177,7 @@ app.layout = html.Div([
             id='row-div-2',
             className='row mr-2 ml-2 mt-3 mb-3'
         )
-    ], id='outer-div', className='mb-2 mr-2 ml-2 p-1')
+    ], id='outer-div', className='mb-2 mr-2 ml-2 p-1'), html.Div([slider_map], className='row')
 ], className='bg-dark')
 
 
@@ -163,20 +185,10 @@ app.layout = html.Div([
 ### FUNCTIONS ###
 
 
-# utility functions
-def round_axis(value):
-    scale = 10**int(log10(value))
-    max_axis = ceil(value / scale) * scale
-    return min(max_axis, max(max_axis - scale/2, value))
-
-def calculate_max(df, groupby_fields):
-    return max(df.groupby(groupby_fields)['Count'].sum())
-
-
 # filter functions
 def filter_date(df, year_list):
     # returns the df filtered by the min and max year in year_list
-    return (df['Year'] >= min(year_list)) & (df['Year'] <= max(year_list))
+    return (df['Year'] >= year_list[0]) & (df['Year'] <= year_list[-1])
 
 def filter_ca(df, ca):
     # return the df filtered by the Community Area
@@ -226,10 +238,8 @@ def get_timeline(df, include_details):
     # data definition
     if include_details:
         timeline_data = timeline_by_crime(df)
-        max_y_axis = round_axis(calculate_max(df, ['yyyy-mm','Primary Type']))
     else:
         timeline_data = timeline_total(df)
-        max_y_axis = round_axis(calculate_max(df, ['yyyy-mm']))
 
     # layout definition
     timeline_layout = go.Layout(
@@ -258,25 +268,90 @@ def get_timeline(df, include_details):
     return go.Figure(data=timeline_data, layout=timeline_layout)
 
 
+## MAP
+def get_choropleth(df, base_year, ca, slider_option):
+    choropleth_series = df.groupby(['Year','Community Area'])['Count'].sum()
+    
+    if slider_option == 0:
+        series = choropleth_series.groupby('Community Area').mean()
+    else:
+        series = choropleth_series.loc[(base_year + slider_option - 1,)]
+    
+    # average values by community area
+    data_choroplethmap = go.Choropleth(
+        geojson=chicago_geojson,
+        locations=series.index,
+        z=series.values,
+        colorscale='inferno',
+        reversescale=True,
+        colorbar=dict(title='Number of Crimes'),
+        marker=dict(opacity=.85),
+        zauto=False,
+        zmin=0,
+        zmax=max(choropleth_series.values)
+    )
+    
+    layout_choroplethmap = go.Layout(
+        mapbox=dict(
+            style='white-bg',
+            layers=[
+                dict(
+                    source=feature,
+                    below='traces',
+                    type='fill',
+                    fill=dict(outlinecolor='white'))
+                for feature in chicago_geojson['features'] if (ca is None or feature['id'] == ca)
+            ]
+        ),
+        geo=dict(fitbounds='locations', visible=False)
+    )
+    
+    return go.Figure(data=data_choroplethmap, layout=layout_choroplethmap)
+
+
 ### CALLBACKS ###
 
 @app.callback(
-    Output('graph-timeline','figure'),
+    [
+        Output('graph-timeline','figure'),
+        Output('graph-map','figure')
+    ],
     [
         Input('slider-years','value'),
         Input('dropdown-ca','value'),
         Input('dropdown-crimes','value'),
-        Input('check-arrest','value')
+        Input('check-arrest','value')#,
+        #Input('slider-map','value')
     ]
 )
-def get_figures(year_list, ca, list_crimes, arrest):
+def get_figures(year_list, ca, list_crimes, arrest):#, slider_option):
     list_arrest = list(map(lambda x: x == 'True', arrest))
     df_filtered = filter_df(df_summ, year_list, ca, list_crimes, list_arrest)
 
     include_details = (list_crimes != [])
 
-    return get_timeline(df_filtered, include_details)
+    return (
+        get_timeline(df_filtered, include_details),
+        get_choropleth(df_filtered, year_list[0], ca, 0)
+    )
 
+
+# update map slider
+@app.callback(
+    [
+        Output('slider-map','max'),
+        Output('slider-map','marks'),
+        Output('slider-map','value')
+    ],
+    [Input('slider-years','value')]
+)
+def update_map_slider(year_list):
+    marks = {
+        (year - year_list[0] + 1): str(year)
+        for year in range(year_list[0],year_list[-1]+1)
+    }
+    marks[0] = 'Average'
+    return (year_list[-1], marks, 0)
 
   
 @app.callback(
