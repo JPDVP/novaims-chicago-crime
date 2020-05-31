@@ -109,7 +109,8 @@ slider_map = dcc.Slider(
     marks={0:'Average',1:'Test',2:'Test2'},
     value=0,
     included=False,
-    updatemode='drag'
+    updatemode='drag',
+    vertical=True
 )
 
 
@@ -162,9 +163,10 @@ app.layout = html.Div([
                 # map chart
                 html.Div(
                     html.Div([
-                        html.Div([dcc.Graph(id='graph-map')], className='row ml-2 mt-1')
-                    ], className='row'),
-                    className='col-5 ml-2 mr-2 p-4 shadow bg-light rounded'
+                        html.Div(slider_map, className='col-1'),
+                        html.Div(dcc.Graph(id='graph-map'), className='col-10')
+                    ], className='row p-4'),
+                    className='col-5 ml-2 mr-2 shadow bg-light rounded'
                 )
             ],
             id='row-div-1',
@@ -177,7 +179,7 @@ app.layout = html.Div([
             id='row-div-2',
             className='row mr-2 ml-2 mt-3 mb-3'
         )
-    ], id='outer-div', className='mb-2 mr-2 ml-2 p-1'), html.Div([slider_map], className='row')
+    ], id='outer-div', className='mb-2 mr-2 ml-2 p-1')
 ], className='bg-dark')
 
 
@@ -284,7 +286,6 @@ def get_choropleth(df, base_year, ca, slider_option):
         z=series.values,
         colorscale='inferno',
         reversescale=True,
-        colorbar=dict(title='Number of Crimes'),
         marker=dict(opacity=.85),
         zauto=False,
         zmin=0,
@@ -293,17 +294,21 @@ def get_choropleth(df, base_year, ca, slider_option):
     
     layout_choroplethmap = go.Layout(
         mapbox=dict(
-            style='white-bg',
+            #style='white-bg',
             layers=[
                 dict(
                     source=feature,
                     below='traces',
-                    type='fill',
-                    fill=dict(outlinecolor='white'))
+                    type='fill')#,
+                    #fill=dict(outlinecolor='white'))
                 for feature in chicago_geojson['features'] if (ca is None or feature['id'] == ca)
             ]
         ),
-        geo=dict(fitbounds='locations', visible=False)
+        geo=dict(fitbounds='locations', visible=False),
+        paper_bgcolor=css_color_light,
+        plot_bgcolor=css_color_light,
+        margin=dict(l=10,r=10)
+
     )
     
     return go.Figure(data=data_choroplethmap, layout=layout_choroplethmap)
@@ -339,6 +344,7 @@ def get_figures(year_list, ca, list_crimes, arrest):#, slider_option):
 # update map slider
 @app.callback(
     [
+        Output('slider-map','min'),
         Output('slider-map','max'),
         Output('slider-map','marks'),
         Output('slider-map','value')
@@ -347,11 +353,11 @@ def get_figures(year_list, ca, list_crimes, arrest):#, slider_option):
 )
 def update_map_slider(year_list):
     marks = {
-        (year - year_list[0] + 1): str(year)
-        for year in range(year_list[0],year_list[-1]+1)
+        year: str(year) if n % 2 == 0 else ''
+        for n, year in enumerate(range(year_list[0],year_list[-1]+1))
     }
-    marks[0] = 'Average'
-    return (year_list[-1], marks, 0)
+    marks[year_list[0]-1] = 'Average'
+    return (year_list[0]-1, year_list[-1], marks, 0)
 
   
 @app.callback(
