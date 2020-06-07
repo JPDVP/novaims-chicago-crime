@@ -12,8 +12,6 @@ from urllib.request import urlopen
 # paths for the dataset and related files
 github_url = 'https://raw.githubusercontent.com/JPDVP/DV_IMS_2019/master/'
 summary_file = 'dataset_files/Crimes_Summary.csv'
-year_summary = 'dataset_files/{year}/Crimes_Summary_{year}.csv'
-year_detail = 'dataset_files/{year}/Crimes_{year}_{ca}.csv'
 geojson_path = 'chicago_areas.geojson'
 
 
@@ -104,19 +102,16 @@ slider_years = dcc.RangeSlider(
 slider_map = dcc.Slider(
     id='slider-map',
     step=1,
-    included=False,
-    vertical=True
+    included=False
 )
 
+# button
+switch_button = html.Button(
+    id='switch-button',
+    n_clicks=0
+)
 
 ### HTML Components ###
-title_div = html.Div(
-    html.H1('Crime in Chicago'),
-    id='title-div',
-    className='row justify-content-md-center',
-    style={'padding':1, 'margin-bottom':1, 'color':css_color_light}
-)
-
 filters_div =  html.Div(
     [
         html.Div([html.H3('Dashboard Filters:')], className='mb-2'),
@@ -134,10 +129,16 @@ filters_div =  html.Div(
             html.Div([html.H5('Arrest'),check_arrest], className='col-4 mt-3 ml-3'),
         ], className='row mt-1 mb-3'),
         html.Div([
-                html.H5('Year'),
-                html.Div(slider_years, className='ml-2 mt-1')
+                html.Div([html.H5('Year'), html.Div(switch_button, className='col-5')], className='row'),
+                html.Div(
+                    [
+                        html.Div(slider_years, id='div-slider-years', style={'display':'block'}),
+                        html.Div(slider_map, id='div-slider-map', style={'display':'none'})
+                    ],
+                    className='mt-3'
+                )
             ],
-            className='mt-3 mb-3'
+            className='mt-3'
         )
     ],
     id='filters-div',
@@ -186,35 +187,20 @@ server = app.server
 app.layout = html.Div(
     [
         html.Div(html.H1('Crime in Chicago'), className='row justify-content-center', style={'color':css_color_light}),
-        html.Div(
-            [
-                html.Div(
-                    [
-                        html.Div([
-                            html.Div(filters_div, className='col-3 p-2'),
-                            html.Div(card_div, className='col-2 p-2'),
-                            html.Div(map_div, className='col-6 p-2')
-                        ],
-                        id='row1-div',
-                        className='row ml-2'
-                        ),
-                        html.Div([
-                            html.Div(timeline_div, className='col-7 p-2'),
-                            html.Div(bar_chart_div, className='col-4 p-2')
-                        ],
-                        id='row2-div',
-                        className='row ml-2')
-                    ],
-                    id='col1-div',
-                    className='col-11'
-                ),
-                html.Div(
-                    slider_div,
-                    id='col2-div',
-                    className='col-1 h-100'
-            )],
-            className='row'
-        )
+        html.Div([
+            html.Div(filters_div, className='col-3 p-2'),
+            html.Div(card_div, className='col-2 p-2'),
+            html.Div(map_div, className='col-7 p-2')
+        ],
+        id='row1-div',
+        className='row ml-2 mr-2'
+        ),
+        html.Div([
+            html.Div(timeline_div, className='col-8 p-2'),
+            html.Div(bar_chart_div, className='col-4 p-2')
+        ],
+        id='row2-div',
+        className='row ml-2 mr-2')
     ],
     id='outer-div',
     className='bg-dark'
@@ -406,6 +392,29 @@ def calculate_metrics(df):
 
 @app.callback(
     [
+        Output('switch-button','children'),
+        Output('div-slider-years','style'),
+        Output('div-slider-map','style')
+    ],
+    [
+        Input('switch-button','n_clicks')
+    ]
+)
+def switch_slider(n_clicks):
+    if n_clicks % 2 == 0:
+        button_text = 'Select Single Year'
+        visibility_slider_years = {'display':'block'}
+        visibility_slider_map = {'display':'none'}
+    else:
+        button_text = 'Select Year Range'
+        visibility_slider_years = {'display':'none'}
+        visibility_slider_map = {'display':'block'}
+    
+    return [button_text], visibility_slider_years, visibility_slider_map
+
+
+@app.callback(
+    [
         Output('graph-timeline','figure'),
         Output('graph-map','figure'),
         Output('bar-chart','figure'),
@@ -440,8 +449,6 @@ def get_figures(year_list, ca, list_crimes, arrest, slider_option):
     return return_list
 
 
-
-
 # update map slider
 @app.callback(
     [
@@ -454,7 +461,7 @@ def get_figures(year_list, ca, list_crimes, arrest, slider_option):
 )
 def update_map_slider(year_list):
     marks = {
-        year: str(year) if n % 2 == 0 else ''
+        year: str(year) if year_list[-1]-year_list[0] < 6 or n % 2 == 1 else ''
         for n, year in enumerate(range(year_list[0],year_list[-1]+1))
     }
     marks[year_list[0]-1] = 'Average'
