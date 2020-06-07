@@ -103,85 +103,122 @@ slider_years = dcc.RangeSlider(
 # slider for map
 slider_map = dcc.Slider(
     id='slider-map',
-    min=0,
-    max=2,
     step=1,
-    marks={0:'Average',1:'Test',2:'Test2'},
-    value=0,
     included=False,
-    updatemode='drag',
     vertical=True
 )
 
 
+### HTML Components ###
+title_div = html.Div(
+    html.H1('Crime in Chicago'),
+    id='title-div',
+    className='row justify-content-md-center',
+    style={'padding':1, 'margin-bottom':1, 'color':css_color_light}
+)
+
+filters_div =  html.Div(
+    [
+        html.Div([html.H3('Dashboard Filters:')], className='mb-2'),
+        html.Div([html.H5('Crime Type'), dropdown_crimes], className='mb-1'),
+        html.Div([
+            html.Div([
+                html.Div([
+                        html.H6('Top:'),
+                        html.Div(slider_top_crimes, className='ml-2 mt-1')
+                    ], 
+                    className='mt-1 mb-5'
+                ),
+                html.Div([html.H5('Community Area'), dropdown_ca], className='mt-5')
+            ], className='col-7 mr-3'),
+            html.Div([html.H5('Arrest'),check_arrest], className='col-4 mt-3 ml-3'),
+        ], className='row mt-1 mb-3'),
+        html.Div([
+                html.H5('Year'),
+                html.Div(slider_years, className='ml-2 mt-1')
+            ],
+            className='mt-3 mb-3'
+        )
+    ],
+    id='filters-div',
+    className='p-4 shadow bg-light rounded'
+)
+
+timeline_div = html.Div(
+    dcc.Graph(id='graph-timeline'),
+    id='timeline-div',
+    className='shadow bg-light rounded'
+)
+
+slider_div = html.Div(
+    html.Div(slider_map, className='my-auto'),
+    className='shadow bg-light rounded'
+)
+
+map_div = html.Div(
+    html.Div(dcc.Graph(id='graph-map'), className='my-auto'),
+    className='shadow bg-light rounded'
+)
+
+bar_chart_div = html.Div(
+    dcc.Graph(id='bar-chart'),
+    id='bar-chart-div',
+    className='shadow bg-light rounded'
+)
+
+card_title = ['Total Crimes', 'Average Crimes', 'Top Crime', 'Top Criminal Area', 'Percentage Arrests']
+card_div = html.Div(
+    [
+        html.Div(
+            [
+                html.Div(title, className='text-center', style={'fontSize':'14px'}),
+                html.Div(html.B(id='card-{}'.format(n+1)), className='text-center', style={'fontSize':'24px'})
+            ],
+            className='shadow bg-light rounded mb-4 mt-4')
+        for n, title in enumerate(card_title)
+    ],
+    className='mr-2'
+)
+
 app = dash.Dash(__name__, external_stylesheets=external_css)
 server = app.server
 
-app.layout = html.Div([
-    # outer-div
-    html.Div([
-        # title-div
-        html.Div(
-            html.H1('Crime in Chicago'),
-            id='title-div',
-            className='row justify-content-md-center',
-            style={'padding':1, 'margin-bottom':1, 'color':css_color_light}
-        ),
-
-        # first-row-div
+app.layout = html.Div(
+    [
+        html.Div(html.H1('Crime in Chicago'), className='row justify-content-center', style={'color':css_color_light}),
         html.Div(
             [
-                # filters-div
                 html.Div(
                     [
-                        html.Div([html.H3('Dashboard Filters:')], className='mb-2'),
-                        html.Div([html.H5('Crime Type'), dropdown_crimes], className='mb-1'),
                         html.Div([
-                            html.Div([
-                                html.Div([
-                                        html.H6('Top:'),
-                                        html.Div(slider_top_crimes, className='ml-2 mt-1')
-                                    ], 
-                                    className='mt-1 mb-5'
-                                ),
-                                html.Div([html.H5('Community Area'), dropdown_ca], className='mt-5')
-                            ], className='col-7 mr-3'),
-                            html.Div([html.H5('Arrest'),check_arrest], className='col-4 mt-3 ml-3'),
-                        ], className='row mt-1 mb-3'),
+                            html.Div(filters_div, className='col-3 p-2'),
+                            html.Div(card_div, className='col-2 p-2'),
+                            html.Div(map_div, className='col-6 p-2')
+                        ],
+                        id='row1-div',
+                        className='row ml-2'
+                        ),
                         html.Div([
-                                html.H5('Year'),
-                                html.Div(slider_years, className='ml-2 mt-1')
-                            ],
-                            className='mt-3 mb-3'
-                        )
+                            html.Div(timeline_div, className='col-7 p-2'),
+                            html.Div(bar_chart_div, className='col-4 p-2')
+                        ],
+                        id='row2-div',
+                        className='row ml-2')
                     ],
-                    id='filters-div',
-                    className='col-3 mr-2 p-4 shadow bg-light rounded'
+                    id='col1-div',
+                    className='col-11'
                 ),
-                # snapshots
-                html.Div([], className='col-2 ml-2 mr-2 p-4 shadow bg-light rounded'),
-                # map chart
                 html.Div(
-                    html.Div([
-                        html.Div(slider_map, className='col-1'),
-                        html.Div(dcc.Graph(id='graph-map'), className='col-10')
-                    ], className='row p-4'),
-                    className='col-5 ml-2 mr-2 shadow bg-light rounded'
-                )
-            ],
-            id='row-div-1',
-            className='row mr-2 ml-2 mt-3 mb-3'
-        ),
-        html.Div(
-            [
-                html.Div([dcc.Graph(id='graph-timeline')], className='col-6 shadow bg-light rounded')
-            ],
-            id='row-div-2',
-            className='row mr-2 ml-2 mt-3 mb-3'
+                    slider_div,
+                    id='col2-div',
+                    className='col-1 h-100'
+            )],
+            className='row'
         )
-    ], id='outer-div', className='mb-2 mr-2 ml-2 p-1')
-], className='bg-dark')
-
+    ],
+    id='outer-div',
+    className='bg-dark'
+)
 
 
 ### FUNCTIONS ###
@@ -245,15 +282,14 @@ def get_timeline(df, include_details):
 
     # layout definition
     timeline_layout = go.Layout(
-        title=dict(text='Crimes Timeline'),
+        title=dict(text='Crimes Timeline', font=dict(size=20)),
         xaxis = dict(
-            rangeslider_visible=True,
+            #rangeslider_visible=True,
             tickformatstops = [
                 dict(dtickrange=[None, 'M6'], value='%Y-%b'),
                 dict(dtickrange=['M6', None], value='%Y')
             ]
         ),
-        #yaxis = dict(range=[0, max_y_axis]),
         showlegend=(len(timeline_data) > 1),     # show legend only if details are included
         legend=dict(
             orientation='h',
@@ -264,26 +300,31 @@ def get_timeline(df, include_details):
         ),
         paper_bgcolor=css_color_light,
         plot_bgcolor=css_color_light,
-        margin=dict(l=10,r=10,t=60,b=30)
+        margin=dict(l=20,r=20,t=60,b=30)
     )
 
     return go.Figure(data=timeline_data, layout=timeline_layout)
 
 
 ## MAP
-def get_choropleth(df, base_year, ca, slider_option):
+def get_choropleth(df, ca, slider_option, year_list):
     choropleth_series = df.groupby(['Year','Community Area'])['Count'].sum()
     
-    if slider_option == 0:
+    if year_list[0] > slider_option:
         series = choropleth_series.groupby('Community Area').mean()
+        chart_title = 'Crime Map (average {}-{})'.format(year_list[0], year_list[-1])
     else:
-        series = choropleth_series.loc[(base_year + slider_option - 1,)]
+        series = choropleth_series.loc[(slider_option,)]
+        chart_title = 'Crime Map ({})'.format(slider_option)
+
+    ca_labels = [ca_names.get(id_ca,'') for id_ca in series.index]
     
     # average values by community area
     data_choroplethmap = go.Choropleth(
         geojson=chicago_geojson,
         locations=series.index,
         z=series.values,
+        text=ca_labels,
         colorscale='inferno',
         reversescale=True,
         marker=dict(opacity=.85),
@@ -293,25 +334,72 @@ def get_choropleth(df, base_year, ca, slider_option):
     )
     
     layout_choroplethmap = go.Layout(
+        title=dict(text=chart_title, font=dict(size=20), x=0.5, y=0.95),
         mapbox=dict(
-            #style='white-bg',
             layers=[
                 dict(
                     source=feature,
                     below='traces',
-                    type='fill')#,
-                    #fill=dict(outlinecolor='white'))
-                for feature in chicago_geojson['features'] if (ca is None or feature['id'] == ca)
+                    type='fill',
+                    fill=dict(outlinecolor='black'))
+                for feature in chicago_geojson['features']
             ]
         ),
         geo=dict(fitbounds='locations', visible=False),
         paper_bgcolor=css_color_light,
         plot_bgcolor=css_color_light,
-        margin=dict(l=10,r=10)
-
+        margin=dict(l=10,r=10,t=40,b=10)
     )
     
     return go.Figure(data=data_choroplethmap, layout=layout_choroplethmap)
+
+## BAR CHART
+def get_bar_chart(df, slider_option, year_list):
+    # boolean to force to take at max 10 type of crimes
+
+    bar_series = df.groupby(['Year','Primary Type'])['Count'].sum()
+
+    if year_list[0] > slider_option:
+        series = bar_series.groupby('Primary Type').mean().sort_values(ascending=False).head(10)
+        chart_title = 'Crime by Type (average {}-{})'.format(year_list[0], year_list[-1])
+    else:
+        series = bar_series.loc[(slider_option,)].sort_values(ascending=False).head(10)
+        chart_title = 'Crime by Type ({})'.format(slider_option)
+
+    data_bar = [
+        go.Bar(x=series.index, y=series.values)
+    ]
+
+    layout_bar = go.Layout(
+        title=dict(text=chart_title, font=dict(size=20), x=0.5, y=0.95),
+        paper_bgcolor=css_color_light,
+        plot_bgcolor=css_color_light
+    )
+
+    return go.Figure(data=data_bar, layout=layout_bar)
+
+
+def calculate_metrics(df):
+    
+    metrics = [
+        df['Count'].sum(),
+        df.groupby('Year')['Count'].sum().mean(),
+        df.groupby('Primary Type')['Count'].sum().nlargest(1).index[0],
+        ca_names[df.groupby('Community Area')['Count'].sum().nlargest(1).index[0]],
+        df[df['Arrest']]['Count'].sum() / df['Count'].sum() * 100
+    ]
+
+    metrics_format = [
+        '{:,d}',
+        '{:,.2f}',
+        '{}',
+        '{}',
+        '{:,.2f}%'
+    ]
+
+    metrics = list(map(lambda x: x[1].format(x[0]).replace(',',' '), zip(metrics, metrics_format)))
+
+    return metrics
 
 
 ### CALLBACKS ###
@@ -319,26 +407,39 @@ def get_choropleth(df, base_year, ca, slider_option):
 @app.callback(
     [
         Output('graph-timeline','figure'),
-        Output('graph-map','figure')
+        Output('graph-map','figure'),
+        Output('bar-chart','figure'),
+        Output('card-1','children'),
+        Output('card-2','children'),
+        Output('card-3','children'),
+        Output('card-4','children'),
+        Output('card-5','children')
     ],
     [
         Input('slider-years','value'),
         Input('dropdown-ca','value'),
         Input('dropdown-crimes','value'),
-        Input('check-arrest','value')#,
-        #Input('slider-map','value')
+        Input('check-arrest','value'),
+        Input('slider-map','value')
     ]
 )
-def get_figures(year_list, ca, list_crimes, arrest):#, slider_option):
+def get_figures(year_list, ca, list_crimes, arrest, slider_option):
     list_arrest = list(map(lambda x: x == 'True', arrest))
     df_filtered = filter_df(df_summ, year_list, ca, list_crimes, list_arrest)
 
     include_details = (list_crimes != [])
 
-    return (
+    metrics = calculate_metrics(df_filtered)
+
+    return_list = [
         get_timeline(df_filtered, include_details),
-        get_choropleth(df_filtered, year_list[0], ca, 0)
-    )
+        get_choropleth(df_filtered, ca, slider_option, year_list),
+        get_bar_chart(df_filtered, slider_option, year_list)
+    ] + metrics
+
+    return return_list
+
+
 
 
 # update map slider
@@ -357,7 +458,7 @@ def update_map_slider(year_list):
         for n, year in enumerate(range(year_list[0],year_list[-1]+1))
     }
     marks[year_list[0]-1] = 'Average'
-    return (year_list[0]-1, year_list[-1], marks, 0)
+    return (year_list[0]-1, year_list[-1], marks, year_list[0]-1)
 
   
 @app.callback(
